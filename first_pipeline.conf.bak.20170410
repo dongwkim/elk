@@ -1,0 +1,45 @@
+input {
+    beats {
+        port => "5044"
+    }
+}
+
+filter {
+    mutate {
+        gsub => [ "message","\t", "" ]
+    }
+    grok {
+        patterns_dir => "./patterns"
+        match => { "message" => "%{SPACE}%{WORD:metric}%{SPACE}%{WORD:object}%{SPACE}%{GREEDYDATA:value}%{SPACE}%{GREEDYDATA:unit}%{SPACE}%{TIMESTAMP_ISO8601:timestamp}" }
+    }
+    mutate {
+        gsub => [ "value",",","" ]
+        strip => [ "value" ]
+#        convert => [ "value" , "float" ]
+    }
+    mutate {
+        convert => [ "value" , "float" ]
+    }
+    mutate {
+        gsub => [ "timestamp","T"," ","timestamp","\+09:00","" ]
+        strip => [ "timestamp" ]
+    }
+    date {
+        match => [ "timestamp","yy-MM-dd HH:mm:ss" ]
+#        match => [ "timestamp","ISO8601" ]
+        target => "@timestamp"
+    }
+}
+
+output {
+    elasticsearch {
+#        hosts => [ "localhost" ]
+        hosts => [ "search-exalogger-nnsps3gjuaxqoxtseih5gc4zhu.ap-northeast-2.es.amazonaws.com:80" ]
+        manage_template => false
+#        index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+        index => "test1-%{+YYYY.MM.dd}"
+        document_type => "%{[@metadata][type]}"
+#        index => "logstash-%{+YYYY.MM.dd}"
+    }
+#    stdout { codec => rubydebug }
+}
